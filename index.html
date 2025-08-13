@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cybercrime Awareness - AR PDF Viewer</title>
+
+<!-- PDF.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+<style>
+    body {
+        margin: 0;
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    canvas {
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.3);
+        border-radius: 8px;
+        background: white;
+    }
+    .controls {
+        margin-top: 10px;
+    }
+    button {
+        padding: 8px 16px;
+        font-size: 16px;
+        cursor: pointer;
+        margin: 0 5px;
+    }
+</style>
+</head>
+<body>
+
+<canvas id="pdf-render"></canvas>
+
+<div class="controls">
+    <button id="prev-page">⬅ Previous</button>
+    <span id="page-info"></span>
+    <button id="next-page">Next ➡</button>
+</div>
+
+<script>
+    const url = "https://mozilla.github.io/pdf.js/"; // 🔹 PUT YOUR PDF FILE PATH HERE
+
+    let pdfDoc = null,
+        pageNum = 1,
+        pageIsRendering = false,
+        pageNumIsPending = null;
+
+    const scale = 1.5,
+          canvas = document.getElementById("pdf-render"),
+          ctx = canvas.getContext("2d");
+
+    // Render the page
+    const renderPage = num => {
+        pageIsRendering = true;
+
+        pdfDoc.getPage(num).then(page => {
+            const viewport = page.getViewport({ scale });
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderCtx = {
+                canvasContext: ctx,
+                viewport
+            };
+
+            page.render(renderCtx).promise.then(() => {
+                pageIsRendering = false;
+
+                if (pageNumIsPending !== null) {
+                    renderPage(pageNumIsPending);
+                    pageNumIsPending = null;
+                }
+            });
+
+            document.getElementById("page-info").textContent = Page ${num} of ${pdfDoc.numPages};
+        });
+    };
+
+    const queueRenderPage = num => {
+        if (pageIsRendering) {
+            pageNumIsPending = num;
+        } else {
+            renderPage(num);
+        }
+    };
+
+    const showPrevPage = () => {
+        if (pageNum <= 1) return;
+        pageNum--;
+        queueRenderPage(pageNum);
+    };
+
+    const showNextPage = () => {
+        if (pageNum >= pdfDoc.numPages) return;
+        pageNum++;
+        queueRenderPage(pageNum);
+    };
+
+    pdfjsLib.getDocument(url).promise.then(pdfDoc_ => {
+        pdfDoc = pdfDoc_;
+        renderPage(pageNum);
+    });
+
+    document.getElementById("prev-page").addEventListener("click", showPrevPage);
+    document.getElementById("next-page").addEventListener("click", showNextPage);
+</script>
+
+</body>
+</html>
